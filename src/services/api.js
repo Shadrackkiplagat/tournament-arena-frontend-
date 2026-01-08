@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5001/api/admin';
+// Use env variable in production, localhost in development
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api/admin';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -10,15 +11,30 @@ const api = axios.create({
 });
 
 // Add token to requests
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-// Auth
+// Optional: Handle expired/invalid token globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('adminToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ===== AUTH =====
 export const authAPI = {
   login: (email, password) =>
     api.post('/login', { email, password }),
@@ -26,12 +42,12 @@ export const authAPI = {
     api.post('/register', { name, email, password, role }),
 };
 
-// Dashboard
+// ===== DASHBOARD =====
 export const dashboardAPI = {
   getDashboard: () => api.get('/dashboard'),
 };
 
-// Matches
+// ===== MATCHES =====
 export const matchesAPI = {
   getAll: (status, page) =>
     api.get('/matches', { params: { status, page, limit: 10 } }),
@@ -42,7 +58,7 @@ export const matchesAPI = {
   delete: (id) => api.delete(`/matches/${id}`),
 };
 
-// Teams
+// ===== TEAMS =====
 export const teamsAPI = {
   getAll: (page) => api.get('/teams', { params: { page, limit: 10 } }),
   create: (formData) =>
@@ -56,7 +72,7 @@ export const teamsAPI = {
   delete: (id) => api.delete(`/teams/${id}`),
 };
 
-// Players
+// ===== PLAYERS =====
 export const playersAPI = {
   getAll: (filters, page) =>
     api.get('/players', { params: { ...filters, page, limit: 10 } }),
@@ -72,7 +88,7 @@ export const playersAPI = {
   delete: (id) => api.delete(`/players/${id}`),
 };
 
-// Users
+// ===== USERS =====
 export const usersAPI = {
   getAll: (page) => api.get('/users', { params: { page, limit: 10 } }),
   create: (userData) => api.post('/users', userData),
@@ -80,13 +96,13 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
-// Settings
+// ===== SETTINGS =====
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
 };
 
-// Activity Logs
+// ===== ACTIVITY LOGS =====
 export const logsAPI = {
   getAll: (page) => api.get('/activity-logs', { params: { page, limit: 20 } }),
 };
